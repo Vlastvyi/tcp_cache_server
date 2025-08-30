@@ -16,7 +16,7 @@ def cmd_set(args):
     key, value = args[0], args[1]
     expire_time = None
 
-    # Optional: EX seconds
+    # Опционально: EX seconds
     if len(args) == 4 and args[2].upper() == "EX":
         try:
             ttl_sec = int(args[3])
@@ -44,7 +44,7 @@ def cmd_get(args):
             return "(nil)"
         value, expire_ts = rec
         if expire_ts is not None and time.time() > expire_ts:
-            # lazy delete on read
+            # lazy delete при чтении
             del data_store[key]
             return "(nil)"
         return value
@@ -57,7 +57,6 @@ COMMANDS = {
 
 
 def process_command(line: str) -> str:
-    # поддерживаем простую текстовую форму: one-line / command args...
     parts = line.strip().split()
     if not parts:
         return "ERR Empty command"
@@ -73,7 +72,6 @@ def cleanup_expired_keys(interval: float = 1.0):
         time.sleep(interval)
         now = time.time()
         with lock:
-            # копируем ключи, чтобы безопасно итерироваться
             for k, (_, exp) in list(data_store.items()):
                 if exp is not None and now > exp:
                     del data_store[k]
@@ -86,16 +84,13 @@ def handle_client(conn: socket.socket, addr):
                 data = conn.recv(4096)
                 if not data:
                     return
-                # поддержка нескольких команд в одном буфере — делим по переводам строк
                 for raw in data.decode(errors="ignore").splitlines():
                     line = raw.strip()
                     if not line:
-                        # пустые строки игнорируем, чтобы telnet не ломал сессию
                         continue
                     resp = process_command(line)
                     conn.sendall((resp + "\n").encode())
         except Exception:
-            # сервер не падает из-за одного клиента
             return
 
 
@@ -106,10 +101,10 @@ def main():
     ap.add_argument("--gc-interval", type=float, default=1.0, help="TTL cleanup interval, seconds")
     args = ap.parse_args()
 
+    # Запуск отдельного потока для очистки просроченных ключей
     threading.Thread(target=cleanup_expired_keys, args=(args.gc_interval,), daemon=True).start()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        # небольшая защита от 'address already in use'
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((args.host, args.port))
         s.listen()
