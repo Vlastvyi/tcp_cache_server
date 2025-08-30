@@ -1,0 +1,23 @@
+# Виртуальное окружение
+venv/
+
+# Кеши Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Файлы pytest
+.cache/
+.pytest_cache/
+
+# Логи
+*.log
+
+# Артефакты
+*.zip
+*.tar
+*.tar.gz
+
+# Docker
+*.env
